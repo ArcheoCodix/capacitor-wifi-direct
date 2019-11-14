@@ -3,8 +3,10 @@ package fr.archeocodix.wifidirect;
 import android.Manifest;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.IntentFilter;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Looper;
+import android.util.Log;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.NativePlugin;
@@ -12,17 +14,7 @@ import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 
-@NativePlugin(
-        permissions = {
-                Manifest.permission.ACCESS_WIFI_STATE,
-                Manifest.permission.ACCESS_WIFI_STATE,
-                Manifest.permission.CHANGE_WIFI_STATE,
-                Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.CHANGE_NETWORK_STATE,
-                Manifest.permission.INTERNET,
-                Manifest.permission.ACCESS_NETWORK_STATE
-        }
-)
+@NativePlugin()
 public class WifiDirect extends Plugin {
 
     WifiP2pManager manager;
@@ -30,9 +22,14 @@ public class WifiDirect extends Plugin {
     BroadcastReceiver receiver;
 
     Context context;
-    IntenteFilter intenteFilter;
+    IntentFilter intentFilter;
 
-    public WifiDirect() {
+    @Override
+    public void load() {
+        super.load();
+
+        Log.i("Load", "start");
+
         if (!hasRequiredPermissions()) {
             pluginRequestAllPermissions();
         }
@@ -42,24 +39,40 @@ public class WifiDirect extends Plugin {
         this.manager = (WifiP2pManager) this.context.getSystemService(Context.WIFI_P2P_SERVICE);
         this.channel = manager.initialize(this.context, this.context.getMainLooper(), null);
         this.receiver = new WiFiDirectBroadcastReceiver(this.manager, this.channel, this);
+
+        this.intentFilter = new IntentFilter();
+        this.intentFilter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
+        this.intentFilter.addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION);
+        this.intentFilter.addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION);
+        this.intentFilter.addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION);
     }
 
     @PluginMethod()
-    public void echo(PluginCall call) {
-        String value = call.getString("value");
+    public void discoverPeers(PluginCall call) {
+        manager.discoverPeers(channel, new WifiP2pManager.ActionListener() {
+            @Override
+            public void onSuccess() {
+                Log.i("onSuccess", "Yes");
+            }
 
-        JSObject ret = new JSObject();
-        ret.put("value", value);
-        call.success(ret);
+            @Override
+            public void onFailure(int reasonCode) {
+                Log.i("onFailure", String.valueOf(reasonCode));
+            }
+        });
     }
 
     @Override
     protected void handleOnResume() {
         super.handleOnResume();
+        Log.i("resume", "on resume");
+        context.registerReceiver(receiver, intentFilter);
     }
 
     @Override
     protected void handleOnPause() {
         super.handleOnPause();
+        Log.i("pause", "on pause");
+        context.unregisterReceiver(receiver);
     }
 }
