@@ -9,7 +9,10 @@ export class WifiDirectWeb extends WebPlugin implements WifiDirectPlugin {
     });
   }
 
-  discoverPeers(): void {}
+  discoverPeers(options: { value: string }): Promise<any> {
+    console.log(options);
+    return undefined;
+  };
 }
 
 const WifiDirect = new WifiDirectWeb();
