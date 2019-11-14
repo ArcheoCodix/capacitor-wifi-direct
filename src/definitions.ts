@@ -5,5 +5,5 @@ declare module "@capacitor/core" {
 }
 
 export interface WifiDirectPlugin {
-  echo(options: { value: string }): Promise<{value: string}>;
+  discoverPeers(): void;
 }
