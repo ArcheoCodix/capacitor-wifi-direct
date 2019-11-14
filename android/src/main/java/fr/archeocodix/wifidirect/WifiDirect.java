@@ -48,16 +48,22 @@ public class WifiDirect extends Plugin {
     }
 
     @PluginMethod()
-    public void discoverPeers(PluginCall call) {
+    public void discoverPeers(final PluginCall call) {
+        Log.i("DISCOVER", "start");
         manager.discoverPeers(channel, new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
-                Log.i("onSuccess", "Yes");
+                JSObject ret = new JSObject();
+                ret.put("enabled", true);
+                call.success(ret);
             }
 
             @Override
             public void onFailure(int reasonCode) {
-                Log.i("onFailure", String.valueOf(reasonCode));
+                JSObject ret = new JSObject();
+                ret.put("enabled", false);
+                ret.put("reasonCode", reasonCode);
+                call.reject("error - reason code : " + reasonCode);
             }
         });
     }
