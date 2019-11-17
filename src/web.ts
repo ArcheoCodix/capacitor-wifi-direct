@@ -1,5 +1,5 @@
-import { WebPlugin } from '@capacitor/core';
-import { WifiDirectPlugin } from './definitions';
+import {WebPlugin} from '@capacitor/core';
+import {WifiDirectPlugin, WifiP2pDevice} from './definitions';
 
 export class WifiDirectWeb extends WebPlugin implements WifiDirectPlugin {
   constructor() {
@@ -9,9 +9,10 @@ export class WifiDirectWeb extends WebPlugin implements WifiDirectPlugin {
     });
   }
 
-  discoverPeers(options: { value: string }): Promise<any> {
-    console.log(options);
-    return undefined;
+  discoverPeers(): Promise<{ devices: WifiP2pDevice[] }> {
+    return new Promise<{ devices: WifiP2pDevice[] }>((resolve) => {
+      return resolve({devices: []});
+    });
   };
 }
 
