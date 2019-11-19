@@ -100,8 +100,11 @@ public class WifiDirect extends Plugin {
             }
 
             @Override
-            public void onFailure(int reasonCode) {
-                call.reject("error - reason code : " + reasonCode);
+            public void onFailure(int reason) {
+                call.reject(String.valueOf(reason));
+            }
+        });
+    }
             }
         });
     }
@@ -115,8 +118,8 @@ public class WifiDirect extends Plugin {
             }
 
             @Override
-            public void onFailure(int reasonCode) {
-                call.reject("error - reason code : " + reasonCode);
+            public void onFailure(int reason) {
+                call.reject(String.valueOf(reason));
             }
         });
     }
