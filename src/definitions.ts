@@ -22,10 +22,17 @@ export interface WifiP2pDevice {
     status: DeviceStatus;
 }
 
+export interface WifiP2pInfo {
+    groupFormed: boolean;
+    isGroupOwner: boolean;
+}
+
 export interface WifiDirectPlugin {
   startDiscoveringPeers(): Promise<void>;
   stopDiscoveringPeers(): Promise<void>;
+  connection(option: {device: WifiP2pDevice}): Promise<void>;
 
   addListener(eventName: 'wifiStateChanged', listener: (state: {isEnabled: boolean}) => void): PluginListenerHandle;
   addListener(eventName: 'peersDiscovered', listener: (req: { devices: WifiP2pDevice[] }) => void): PluginListenerHandle;
+  addListener(eventName: 'connectionInfoAvailable', listener: (info: WifiP2pInfo) => void): PluginListenerHandle;
 }
