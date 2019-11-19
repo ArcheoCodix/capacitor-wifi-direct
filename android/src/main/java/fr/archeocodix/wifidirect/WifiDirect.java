@@ -32,15 +32,15 @@ import java.util.List;
 )
 public class WifiDirect extends Plugin {
 
+    final String PEERS_DISCOVERED_EVENT = "peersDiscovered";
+    final String WIFI_STATE_EVENT = "wifiStateChanged";
+
     WifiP2pManager manager;
     WifiP2pManager.Channel channel;
     BroadcastReceiver receiver;
 
     Context context;
     IntentFilter intentFilter;
-
-    // Call WifiP2pManager.requestPeers() to get a list of current peers
-    WifiP2pManager.PeerListListener peerListListener;
 
     @Override
     public void load() {
@@ -63,39 +63,55 @@ public class WifiDirect extends Plugin {
         this.intentFilter.addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION);
     }
 
-    @PluginMethod()
-    public void discoverPeers(final PluginCall call) {
-        peerListListener = new WifiP2pManager.PeerListListener() {
-            @Override
-            public void onPeersAvailable(WifiP2pDeviceList wifiP2pDeviceList) {
-                Iterator<WifiP2pDevice> list = wifiP2pDeviceList.getDeviceList().iterator();
-                JSArray deviceArray = new JSArray();
+    // Call WifiP2pManager.requestPeers() to get a list of current peers
+    WifiP2pManager.PeerListListener peerListListener = new WifiP2pManager.PeerListListener() {
+        @Override
+        public void onPeersAvailable(WifiP2pDeviceList wifiP2pDeviceList) {
+            Iterator<WifiP2pDevice> list = wifiP2pDeviceList.getDeviceList().iterator();
+            JSArray deviceArray = new JSArray();
 
-                for (; list.hasNext();) {
-                    WifiP2pDevice device = list.next();
-                    JSObject obj = new JSObject();
+            for (; list.hasNext();) {
+                WifiP2pDevice device = list.next();
+                JSObject obj = new JSObject();
 
-                    obj.put("deviceAddress", device.deviceAddress);
-                    obj.put("deviceName", device.deviceName);
-                    obj.put("primaryDeviceType", device.primaryDeviceType);
-                    obj.put("secondaryDeviceType", device.secondaryDeviceType);
-                    obj.put("status", device.status);
+                obj.put("deviceAddress", device.deviceAddress);
+                obj.put("deviceName", device.deviceName);
+                obj.put("primaryDeviceType", device.primaryDeviceType);
+                obj.put("secondaryDeviceType", device.secondaryDeviceType);
+                obj.put("status", device.status);
 
-                    deviceArray.put(obj);
-                }
-
-                JSObject ret = new JSObject();
-
-                ret.put("devices", deviceArray);
-
-                call.success(ret);
+                deviceArray.put(obj);
             }
-        };
 
+            JSObject ret = new JSObject();
+
+            ret.put("devices", deviceArray);
+
+            notifyListeners(PEERS_DISCOVERED_EVENT, ret);
+        }
+    };
+
+    @PluginMethod()
+    public void startDiscoveringPeers(final PluginCall call) {
         manager.discoverPeers(channel, new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
+                call.success();
+            }
 
+            @Override
+            public void onFailure(int reasonCode) {
+                call.reject("error - reason code : " + reasonCode);
+            }
+        });
+    }
+
+    @PluginMethod()
+    public void stopDiscoveringPeers(final PluginCall call) {
+        manager.stopPeerDiscovery(channel, new WifiP2pManager.ActionListener() {
+            @Override
+            public void onSuccess() {
+                call.success();
             }
 
             @Override
@@ -108,7 +124,7 @@ public class WifiDirect extends Plugin {
     protected void sendConnectionState(boolean isWifiEnabled) {
         JSObject state = new JSObject();
         state.put("isEnabled", isWifiEnabled);
-        notifyListeners("wifiState", state);
+        notifyListeners(WIFI_STATE_EVENT, state);
     }
 
     @Override
