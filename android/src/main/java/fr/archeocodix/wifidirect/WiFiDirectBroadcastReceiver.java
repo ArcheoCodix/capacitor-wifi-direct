@@ -24,14 +24,16 @@ public class WiFiDirectBroadcastReceiver extends BroadcastReceiver {
         String action = intent.getAction();
 
         if (WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION.equals(action)) {
+
             int state = intent.getIntExtra(WifiP2pManager.EXTRA_WIFI_STATE, -1);
             this.mWifiDirect.sendConnectionState(state == WifiP2pManager.WIFI_P2P_STATE_ENABLED);
+
         } else if (WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION.equals(action)) {
-            Log.i("BroadcastReceiver", "onReceive - WIFI_P2P_PEERS_CHANGED_ACTION");
-            
+
             if (this.mManager != null) {
                 this.mManager.requestPeers(this.mChannel, mWifiDirect.peerListListener);
             }
+
         } else if (WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION.equals(action)) {
             // Respond to new connection or disconnections
         } else if (WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION.equals(action)) {
