@@ -4,8 +4,11 @@ import android.Manifest;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.IntentFilter;
+import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pDeviceList;
+import android.net.wifi.p2p.WifiP2pGroup;
+import android.net.wifi.p2p.WifiP2pInfo;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.util.Log;
 
@@ -91,6 +94,13 @@ public class WifiDirect extends Plugin {
         }
     };
 
+    WifiP2pManager.ConnectionInfoListener connectionInfoListener = new WifiP2pManager.ConnectionInfoListener() {
+        @Override
+        public void onConnectionInfoAvailable(WifiP2pInfo info) {
+            
+        }
+    };
+
     @PluginMethod()
     public void startDiscoveringPeers(final PluginCall call) {
         manager.discoverPeers(channel, new WifiP2pManager.ActionListener() {
@@ -105,13 +115,35 @@ public class WifiDirect extends Plugin {
             }
         });
     }
+
+    @PluginMethod()
+    public void stopDiscoveringPeers(final PluginCall call) {
+        manager.stopPeerDiscovery(channel, new WifiP2pManager.ActionListener() {
+            @Override
+            public void onSuccess() {
+                call.success();
+            }
+
+            @Override
+            public void onFailure(int reason) {
+                call.reject(String.valueOf(reason));
             }
         });
     }
 
     @PluginMethod()
-    public void stopDiscoveringPeers(final PluginCall call) {
-        manager.stopPeerDiscovery(channel, new WifiP2pManager.ActionListener() {
+    public void connection(final PluginCall call) {
+        if (!call.getData().has("device")) {
+            call.reject("Must provide a device want to connect");
+            return;
+        }
+
+        JSObject device = call.getObject("device");
+
+        WifiP2pConfig config = new WifiP2pConfig();
+        config.deviceAddress = device.getString("deviceAddress");
+
+        manager.connect(channel, config, new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
                 call.success();
