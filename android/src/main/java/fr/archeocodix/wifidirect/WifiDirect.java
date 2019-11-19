@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.IntentFilter;
+import android.net.wifi.WifiInfo;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pDeviceList;
@@ -19,6 +20,7 @@ import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 
+import java.net.InetAddress;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
@@ -37,11 +39,11 @@ public class WifiDirect extends Plugin {
 
     final String PEERS_DISCOVERED_EVENT = "peersDiscovered";
     final String WIFI_STATE_EVENT = "wifiStateChanged";
+    final String CONNECTION_INFO_EVENT = "connectionInfoAvailable";
 
     WifiP2pManager manager;
     WifiP2pManager.Channel channel;
     BroadcastReceiver receiver;
-
     Context context;
     IntentFilter intentFilter;
 
@@ -97,7 +99,15 @@ public class WifiDirect extends Plugin {
     WifiP2pManager.ConnectionInfoListener connectionInfoListener = new WifiP2pManager.ConnectionInfoListener() {
         @Override
         public void onConnectionInfoAvailable(WifiP2pInfo info) {
-            
+            final InetAddress groupOwnerAddress = info.groupOwnerAddress;
+
+            JSObject groupInfo = new JSObject();
+
+            groupInfo.put("groupFormed", info.groupFormed);
+            groupInfo.put("isGroupOwner", info.isGroupOwner);
+            groupInfo.put("hostAddress", groupOwnerAddress.getHostAddress());
+
+            notifyListeners(CONNECTION_INFO_EVENT, groupInfo);
         }
     };
 
