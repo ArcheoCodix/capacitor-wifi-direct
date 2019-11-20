@@ -31,6 +31,8 @@ export interface WifiDirectPlugin {
   startDiscoveringPeers(): Promise<void>;
   stopDiscoveringPeers(): Promise<void>;
   connection(option: {device: WifiP2pDevice}): Promise<void>;
+  disconnect(): Promise<void>;
+  host(): Promise<void>;
 
   addListener(eventName: 'wifiStateChanged', listener: (state: {isEnabled: boolean}) => void): PluginListenerHandle;
   addListener(eventName: 'peersDiscovered', listener: (req: { devices: WifiP2pDevice[] }) => void): PluginListenerHandle;
