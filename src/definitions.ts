@@ -14,6 +14,13 @@ export enum DeviceStatus {
     Unavailable = 4
 }
 
+export enum FailReason {
+  Busy = 2,
+  Error = 0,
+  NoServiceRequests = 3,
+  P2pUnsupported = 1
+}
+
 export interface WifiP2pDevice {
     deviceAddress: string;
     deviceName: string;
