@@ -1,5 +1,5 @@
 {
-  "name": "capacitor-wifi-direct-test",
+  "name": "capacitor-wifi-direct",
   "version": "1.0.0-alpha.1",
   "description": "Capacitor plugin to use Wifi Direct Android feature",
   "main": "dist/esm/index.js",
