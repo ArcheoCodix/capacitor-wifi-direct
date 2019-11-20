@@ -166,6 +166,36 @@ public class WifiDirect extends Plugin {
         });
     }
 
+    @PluginMethod()
+    public void disconnect(final PluginCall call) {
+        manager.cancelConnect(channel, new WifiP2pManager.ActionListener() {
+            @Override
+            public void onSuccess() {
+                call.success();
+            }
+
+            @Override
+            public void onFailure(int reason) {
+                call.reject(String.valueOf(reason));
+            }
+        });
+    }
+
+    @PluginMethod()
+    public void host(final PluginCall call) {
+        manager.createGroup(channel, new WifiP2pManager.ActionListener() {
+            @Override
+            public void onSuccess() {
+                call.success();
+            }
+
+            @Override
+            public void onFailure(int reason) {
+                call.reject(String.valueOf(reason));
+            }
+        });
+    }
+
     protected void sendConnectionState(boolean isWifiEnabled) {
         JSObject state = new JSObject();
         state.put("isEnabled", isWifiEnabled);
