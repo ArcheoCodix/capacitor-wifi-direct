@@ -142,7 +142,7 @@ public class WifiDirect extends Plugin {
     }
 
     @PluginMethod()
-    public void connection(final PluginCall call) {
+    public void connect(final PluginCall call) {
         if (!call.getData().has("device")) {
             call.reject("Must provide a device want to connect");
             return;

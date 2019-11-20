@@ -37,7 +37,7 @@ export interface WifiP2pInfo {
 export interface WifiDirectPlugin {
   startDiscoveringPeers(): Promise<void>;
   stopDiscoveringPeers(): Promise<void>;
-  connection(option: {device: WifiP2pDevice}): Promise<void>;
+  connect(option: {device: WifiP2pDevice}): Promise<void>;
   disconnect(): Promise<void>;
   host(): Promise<void>;
 
