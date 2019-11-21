@@ -7,14 +7,14 @@ declare module "@capacitor/core" {
 }
 
 export enum DeviceStatus {
-    Available = 3,
-    Connected = 0,
-    Failed = 2,
-    Invited = 1,
-    Unavailable = 4
+  Available = 3,
+  Connected = 0,
+  Failed = 2,
+  Invited = 1,
+  Unavailable = 4
 }
 
-export enum FailReason {
+export enum FailureReason {
   Busy = 2,
   Error = 0,
   NoServiceRequests = 3,
@@ -22,16 +22,17 @@ export enum FailReason {
 }
 
 export interface WifiP2pDevice {
-    deviceAddress: string;
-    deviceName: string;
-    primaryDeviceType: string;
-    secondaryDeviceType: string;
-    status: DeviceStatus;
+  deviceAddress: string;
+  deviceName: string;
+  primaryDeviceType: string;
+  secondaryDeviceType: string;
+  status: DeviceStatus;
 }
 
 export interface WifiP2pInfo {
-    groupFormed: boolean;
-    isGroupOwner: boolean;
+  groupFormed: boolean;
+  isGroupOwner: boolean;
+  hostAddress: string;
 }
 
 export interface WifiDirectPlugin {
