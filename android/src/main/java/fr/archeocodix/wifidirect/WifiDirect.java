@@ -85,13 +85,13 @@ public class WifiDirect extends Plugin {
         public void onConnectionInfoAvailable(WifiP2pInfo info) {
             final InetAddress groupOwnerAddress = info.groupOwnerAddress;
 
-            JSObject groupInfo = new JSObject();
+            JSObject connectionInfo = new JSObject();
 
-            groupInfo.put("groupFormed", info.groupFormed);
-            groupInfo.put("isGroupOwner", info.isGroupOwner);
-            groupInfo.put("hostAddress", groupOwnerAddress.getHostAddress());
+            connectionInfo.put("groupFormed", info.groupFormed);
+            connectionInfo.put("isGroupOwner", info.isGroupOwner);
+            connectionInfo.put("hostAddress", groupOwnerAddress.getHostAddress());
 
-            notifyListeners(CONNECTION_INFO_EVENT, groupInfo);
+            notifyListeners(CONNECTION_INFO_EVENT, connectionInfo);
         }
     };
 
