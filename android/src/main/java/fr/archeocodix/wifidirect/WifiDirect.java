@@ -188,6 +188,55 @@ public class WifiDirect extends Plugin {
         });
     }
 
+    private void startPeersWatch(PluginCall call) {
+        watchingPeersCalls.put(call.getCallbackId(), call);
+    }
+
+    @PluginMethod()
+    public void clearPeersWatch(PluginCall call) {
+        String callbackId = call.getString("id");
+        if (callbackId != null) {
+            PluginCall removed = watchingPeersCalls.remove(callbackId);
+            if (removed != null) {
+                removed.release(bridge);
+            }
+        }
+
+        call.success();
+    }
+
+    private void processPeers(WifiP2pDevice[] devices) {
+        JSObject jsDevices = deviceArrayToJSObject(devices);
+
+        if (watchingPeersDiscover != null) watchingPeersDiscover.success(jsDevices);
+
+        for (Map.Entry<String, PluginCall> watch : watchingPeersCalls.entrySet()) {
+            watch.getValue().success(jsDevices);
+        }
+    }
+
+    private JSObject deviceArrayToJSObject(WifiP2pDevice[] devices) {
+        JSArray deviceArray = new JSArray();
+
+        for (WifiP2pDevice device : devices) {
+            JSObject obj = new JSObject();
+
+            obj.put("deviceAddress", device.deviceAddress);
+            obj.put("deviceName", device.deviceName);
+            obj.put("primaryDeviceType", device.primaryDeviceType);
+            obj.put("secondaryDeviceType", device.secondaryDeviceType);
+            obj.put("status", device.status);
+
+            deviceArray.put(obj);
+        }
+
+        JSObject ret = new JSObject();
+
+        ret.put("devices", deviceArray);
+
+        return ret;
+    }
+
     protected void sendConnectionState(boolean isWifiEnabled) {
         JSObject state = new JSObject();
         state.put("isEnabled", isWifiEnabled);
