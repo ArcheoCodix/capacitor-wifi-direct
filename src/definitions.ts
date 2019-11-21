@@ -1,4 +1,4 @@
-import {PluginListenerHandle} from "@capacitor/core";
+import {CallbackID, PluginListenerHandle} from "@capacitor/core";
 
 declare module "@capacitor/core" {
   interface PluginRegistry {
@@ -35,14 +35,14 @@ export interface WifiP2pInfo {
   hostAddress: string;
 }
 
+export declare type DiscoveryPeersWatchCallback = (req: { devices: WifiP2pDevice[] }, err?: FailureReason) => void;
 export interface WifiDirectPlugin {
-  startDiscoveringPeers(): Promise<void>;
+  startDiscoveringPeers(callback: DiscoveryPeersWatchCallback): CallbackID;
   stopDiscoveringPeers(): Promise<void>;
   connect(option: {device: WifiP2pDevice}): Promise<void>;
   disconnect(): Promise<void>;
   host(): Promise<void>;
 
   addListener(eventName: 'wifiStateChanged', listener: (state: {isEnabled: boolean}) => void): PluginListenerHandle;
-  addListener(eventName: 'peersDiscovered', listener: (req: { devices: WifiP2pDevice[] }) => void): PluginListenerHandle;
   addListener(eventName: 'connectionInfoAvailable', listener: (info: WifiP2pInfo) => void): PluginListenerHandle;
 }

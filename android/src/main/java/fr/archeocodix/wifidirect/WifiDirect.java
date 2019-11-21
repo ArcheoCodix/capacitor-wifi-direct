@@ -22,8 +22,10 @@ import com.getcapacitor.PluginMethod;
 
 import java.net.InetAddress;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 @NativePlugin(
         permissions={
@@ -37,7 +39,6 @@ import java.util.List;
 )
 public class WifiDirect extends Plugin {
 
-    final String PEERS_DISCOVERED_EVENT = "peersDiscovered";
     final String WIFI_STATE_EVENT = "wifiStateChanged";
     final String CONNECTION_INFO_EVENT = "connectionInfoAvailable";
 
@@ -46,6 +47,9 @@ public class WifiDirect extends Plugin {
     BroadcastReceiver receiver;
     Context context;
     IntentFilter intentFilter;
+
+    Map<String, PluginCall> watchingPeersCalls = new HashMap<>();
+    PluginCall watchingPeersDiscover;
 
     @Override
     public void load() {
@@ -72,27 +76,7 @@ public class WifiDirect extends Plugin {
     WifiP2pManager.PeerListListener peerListListener = new WifiP2pManager.PeerListListener() {
         @Override
         public void onPeersAvailable(WifiP2pDeviceList wifiP2pDeviceList) {
-            Iterator<WifiP2pDevice> list = wifiP2pDeviceList.getDeviceList().iterator();
-            JSArray deviceArray = new JSArray();
-
-            for (; list.hasNext();) {
-                WifiP2pDevice device = list.next();
-                JSObject obj = new JSObject();
-
-                obj.put("deviceAddress", device.deviceAddress);
-                obj.put("deviceName", device.deviceName);
-                obj.put("primaryDeviceType", device.primaryDeviceType);
-                obj.put("secondaryDeviceType", device.secondaryDeviceType);
-                obj.put("status", device.status);
-
-                deviceArray.put(obj);
-            }
-
-            JSObject ret = new JSObject();
-
-            ret.put("devices", deviceArray);
-
-            notifyListeners(PEERS_DISCOVERED_EVENT, ret);
+            processPeers((WifiP2pDevice[]) wifiP2pDeviceList.getDeviceList().toArray());
         }
     };
 
@@ -111,12 +95,18 @@ public class WifiDirect extends Plugin {
         }
     };
 
-    @PluginMethod()
+    @PluginMethod(returnType=PluginMethod.RETURN_CALLBACK)
     public void startDiscoveringPeers(final PluginCall call) {
+        if (watchingPeersDiscover != null) {
+            watchingPeersDiscover.release(bridge);
+            watchingPeersDiscover = null;
+        }
+
         manager.discoverPeers(channel, new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
-                call.success();
+                call.save();
+                watchingPeersDiscover = call;
             }
 
             @Override
@@ -131,6 +121,8 @@ public class WifiDirect extends Plugin {
         manager.stopPeerDiscovery(channel, new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
+                watchingPeersDiscover.release(bridge);
+                watchingPeersDiscover = null;
                 call.success();
             }
 
