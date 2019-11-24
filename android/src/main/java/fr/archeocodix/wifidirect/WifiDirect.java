@@ -76,7 +76,7 @@ public class WifiDirect extends Plugin {
     WifiP2pManager.PeerListListener peerListListener = new WifiP2pManager.PeerListListener() {
         @Override
         public void onPeersAvailable(WifiP2pDeviceList wifiP2pDeviceList) {
-            processPeers((WifiP2pDevice[]) wifiP2pDeviceList.getDeviceList().toArray());
+            processPeers(wifiP2pDeviceList.getDeviceList().toArray(new WifiP2pDevice[0]));
         }
     };
 
