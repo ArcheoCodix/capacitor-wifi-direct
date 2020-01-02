@@ -9,6 +9,9 @@ import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pDeviceList;
 import android.net.wifi.p2p.WifiP2pInfo;
 import android.net.wifi.p2p.WifiP2pManager;
+import android.os.Handler;
+import android.os.Handler.Callback;
+import android.os.Message;
 
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
@@ -18,6 +21,7 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 
 import java.net.InetAddress;
+import java.net.Socket;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -47,6 +51,10 @@ public class WifiDirect extends Plugin {
 
     private Map<String, PluginCall> watchingWifiStateCalls = new HashMap<>();
 
+    private Map<String, PluginCall> watchingMessageCalls = new HashMap<>();
+
+    static final int MESSAGE_READ = 1;
+
     @Override
     public void load() {
         super.load();
@@ -67,6 +75,23 @@ public class WifiDirect extends Plugin {
         this.intentFilter.addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION);
         this.intentFilter.addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION);
     }
+
+    Server server;
+    Client client;
+    SendReceive sendReceive;
+
+    Handler messageHandler = new Handler(new Callback() {
+        @Override
+        public boolean handleMessage(Message msg) {
+            switch (msg.what) {
+                case MESSAGE_READ:
+                    byte[] readBuff = (byte[]) msg.obj;
+                    sendMessage(new String(readBuff, 0, msg.arg1));
+                    break;
+            }
+            return true;
+        }
+    });
 
     // Call WifiP2pManager.requestPeers() to get a list of current peers
     WifiP2pManager.PeerListListener peerListListener = new WifiP2pManager.PeerListListener() {
@@ -178,6 +203,14 @@ public class WifiDirect extends Plugin {
         });
     }
 
+    @PluginMethod()
+    public void write(final PluginCall call) {
+        String msg = call.getString("message", "");
+        sendReceive.write(msg.getBytes());
+
+        call.success();
+    }
+
     private void startPeersWatch(PluginCall call) {
         watchingPeersCalls.put(call.getCallbackId(), call);
     }
@@ -192,6 +225,11 @@ public class WifiDirect extends Plugin {
         watchingWifiStateCalls.put(call.getCallbackId(), call);
     }
 
+    @PluginMethod(returnType=PluginMethod.RETURN_CALLBACK)
+    private void startWatchMessage(PluginCall call) {
+        watchingMessageCalls.put(call.getCallbackId(), call);
+    }
+
     public void clearPeersWatch(PluginCall call) {
         clearWatch(call.getString("id"), watchingPeersCalls);
 
@@ -201,6 +239,13 @@ public class WifiDirect extends Plugin {
     @PluginMethod()
     public void clearInfoConnectionWatch(PluginCall call) {
         clearWatch(call.getString("id"), watchingCoInfoCalls);
+
+        call.success();
+    }
+
+    @PluginMethod()
+    public void clearMessageWatch(PluginCall call) {
+        clearWatch(call.getString("id"), watchingMessageCalls);
 
         call.success();
     }
@@ -233,9 +278,25 @@ public class WifiDirect extends Plugin {
 
     private void processConnectionInfo(WifiP2pInfo info) {
         JSObject connectionInfo = new JSObject();
+        Socket skt = null;
 
         connectionInfo.put("groupFormed", info.groupFormed);
         connectionInfo.put("isGroupOwner", info.isGroupOwner);
+
+        if (info.groupFormed && info.isGroupOwner) {
+            server = new Server();
+            server.start();
+            skt = server.socket;
+        } else if (info.isGroupOwner) {
+            client = new Client(info.groupOwnerAddress);
+            client.start();
+            skt = client.socket;
+        }
+
+        if (skt != null) {
+            sendReceive = new SendReceive(skt, messageHandler);
+            sendReceive.start();
+        }
 
         if (watchingConnectionInfo != null) watchingConnectionInfo.success(connectionInfo);
 
@@ -272,6 +333,15 @@ public class WifiDirect extends Plugin {
 
         for (Map.Entry<String, PluginCall> watch : watchingWifiStateCalls.entrySet()) {
             watch.getValue().success(state);
+        }
+    }
+
+    private void sendMessage(String msg) {
+        JSObject message = new JSObject();
+        message.put("message", msg);
+
+        for (Map.Entry<String, PluginCall> watch : watchingMessageCalls.entrySet()) {
+            watch.getValue().success(message);
         }
     }
 

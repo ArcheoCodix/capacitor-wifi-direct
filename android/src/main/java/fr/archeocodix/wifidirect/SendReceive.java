@@ -1,5 +1,7 @@
 package fr.archeocodix.wifidirect;
 
+import android.os.Handler;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -9,9 +11,11 @@ public class SendReceive extends Thread {
     private Socket socket;
     private InputStream inputStream;
     private OutputStream outputStream;
+    private Handler handler;
 
-    public SendReceive(Socket skt) {
+    public SendReceive(Socket skt, Handler hdl) {
         socket = skt;
+        handler = hdl;
 
         try {
             inputStream = socket.getInputStream();

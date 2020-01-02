@@ -9,7 +9,7 @@ public class Client extends Thread {
     Socket socket;
     String hostAdd;
 
-    public Client(InetAddress hostAddress) {
+    Client(InetAddress hostAddress) {
         hostAdd = hostAddress.getHostAddress();
         socket = new Socket();
     }
@@ -18,8 +18,6 @@ public class Client extends Thread {
     public void run() {
         try {
             socket.connect(new InetSocketAddress(hostAdd, 8888), 500);
-            sendReceive = new SendReceive(socket);
-            sendReceive.start();
         } catch (IOException e) {
             e.printStackTrace();
         }
