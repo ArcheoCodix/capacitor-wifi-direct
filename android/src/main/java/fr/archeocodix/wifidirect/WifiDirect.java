@@ -4,14 +4,11 @@ import android.Manifest;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.IntentFilter;
-import android.net.wifi.WifiInfo;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pDeviceList;
-import android.net.wifi.p2p.WifiP2pGroup;
 import android.net.wifi.p2p.WifiP2pInfo;
 import android.net.wifi.p2p.WifiP2pManager;
-import android.util.Log;
 
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
@@ -21,9 +18,8 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 
 import java.net.InetAddress;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 @NativePlugin(
         permissions={
@@ -37,15 +33,19 @@ import java.util.List;
 )
 public class WifiDirect extends Plugin {
 
-    final String PEERS_DISCOVERED_EVENT = "peersDiscovered";
-    final String WIFI_STATE_EVENT = "wifiStateChanged";
-    final String CONNECTION_INFO_EVENT = "connectionInfoAvailable";
+    private WifiP2pManager manager;
+    private WifiP2pManager.Channel channel;
+    private BroadcastReceiver receiver;
+    private Context context;
+    private IntentFilter intentFilter;
 
-    WifiP2pManager manager;
-    WifiP2pManager.Channel channel;
-    BroadcastReceiver receiver;
-    Context context;
-    IntentFilter intentFilter;
+    private Map<String, PluginCall> watchingPeersCalls = new HashMap<>();
+    private PluginCall watchingPeersDiscover;
+
+    private Map<String, PluginCall> watchingCoInfoCalls = new HashMap<>();
+    private PluginCall watchingConnectionInfo;
+
+    private Map<String, PluginCall> watchingWifiStateCalls = new HashMap<>();
 
     @Override
     public void load() {
@@ -72,27 +72,7 @@ public class WifiDirect extends Plugin {
     WifiP2pManager.PeerListListener peerListListener = new WifiP2pManager.PeerListListener() {
         @Override
         public void onPeersAvailable(WifiP2pDeviceList wifiP2pDeviceList) {
-            Iterator<WifiP2pDevice> list = wifiP2pDeviceList.getDeviceList().iterator();
-            JSArray deviceArray = new JSArray();
-
-            for (; list.hasNext();) {
-                WifiP2pDevice device = list.next();
-                JSObject obj = new JSObject();
-
-                obj.put("deviceAddress", device.deviceAddress);
-                obj.put("deviceName", device.deviceName);
-                obj.put("primaryDeviceType", device.primaryDeviceType);
-                obj.put("secondaryDeviceType", device.secondaryDeviceType);
-                obj.put("status", device.status);
-
-                deviceArray.put(obj);
-            }
-
-            JSObject ret = new JSObject();
-
-            ret.put("devices", deviceArray);
-
-            notifyListeners(PEERS_DISCOVERED_EVENT, ret);
+            processPeersList(wifiP2pDeviceList.getDeviceList().toArray(new WifiP2pDevice[0]));
         }
     };
 
@@ -100,23 +80,22 @@ public class WifiDirect extends Plugin {
         @Override
         public void onConnectionInfoAvailable(WifiP2pInfo info) {
             final InetAddress groupOwnerAddress = info.groupOwnerAddress;
-
-            JSObject groupInfo = new JSObject();
-
-            groupInfo.put("groupFormed", info.groupFormed);
-            groupInfo.put("isGroupOwner", info.isGroupOwner);
-            groupInfo.put("hostAddress", groupOwnerAddress.getHostAddress());
-
-            notifyListeners(CONNECTION_INFO_EVENT, groupInfo);
+            processConnectionInfo(info);
         }
     };
 
-    @PluginMethod()
+    @PluginMethod(returnType=PluginMethod.RETURN_CALLBACK)
     public void startDiscoveringPeers(final PluginCall call) {
+        if (watchingPeersDiscover != null) {
+            watchingPeersDiscover.release(bridge);
+            watchingPeersDiscover = null;
+        }
+
         manager.discoverPeers(channel, new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
-                call.success();
+                call.save();
+                watchingPeersDiscover = call;
             }
 
             @Override
@@ -131,6 +110,8 @@ public class WifiDirect extends Plugin {
         manager.stopPeerDiscovery(channel, new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
+                watchingPeersDiscover.release(bridge);
+                watchingPeersDiscover = null;
                 call.success();
             }
 
@@ -141,8 +122,8 @@ public class WifiDirect extends Plugin {
         });
     }
 
-    @PluginMethod()
-    public void connection(final PluginCall call) {
+    @PluginMethod(returnType=PluginMethod.RETURN_CALLBACK)
+    public void connect(final PluginCall call) {
         if (!call.getData().has("device")) {
             call.reject("Must provide a device want to connect");
             return;
@@ -156,6 +137,22 @@ public class WifiDirect extends Plugin {
         manager.connect(channel, config, new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
+                call.save();
+                watchingConnectionInfo = call;
+            }
+
+            @Override
+            public void onFailure(int reason) {
+                call.reject(String.valueOf(reason));
+            }
+        });
+    }
+
+    @PluginMethod()
+    public void disconnect(final PluginCall call) {
+        manager.cancelConnect(channel, new WifiP2pManager.ActionListener() {
+            @Override
+            public void onSuccess() {
                 call.success();
             }
 
@@ -166,10 +163,116 @@ public class WifiDirect extends Plugin {
         });
     }
 
-    protected void sendConnectionState(boolean isWifiEnabled) {
+    @PluginMethod()
+    public void host(final PluginCall call) {
+        manager.createGroup(channel, new WifiP2pManager.ActionListener() {
+            @Override
+            public void onSuccess() {
+                call.success();
+            }
+
+            @Override
+            public void onFailure(int reason) {
+                call.reject(String.valueOf(reason));
+            }
+        });
+    }
+
+    private void startPeersWatch(PluginCall call) {
+        watchingPeersCalls.put(call.getCallbackId(), call);
+    }
+
+    @PluginMethod(returnType=PluginMethod.RETURN_CALLBACK)
+    private void startWatchConnectionInfo(PluginCall call) {
+        watchingCoInfoCalls.put(call.getCallbackId(), call);
+    }
+
+    @PluginMethod(returnType=PluginMethod.RETURN_CALLBACK)
+    private void startWatchWifiState(PluginCall call) {
+        watchingWifiStateCalls.put(call.getCallbackId(), call);
+    }
+
+    public void clearPeersWatch(PluginCall call) {
+        clearWatch(call.getString("id"), watchingPeersCalls);
+
+        call.success();
+    }
+
+    @PluginMethod()
+    public void clearInfoConnectionWatch(PluginCall call) {
+        clearWatch(call.getString("id"), watchingCoInfoCalls);
+
+        call.success();
+    }
+
+    @PluginMethod()
+    public void clearWifiStateWatch(PluginCall call) {
+        clearWatch(call.getString("id"), watchingWifiStateCalls);
+
+        call.success();
+    }
+
+    private void clearWatch(String callbackId, Map<String, PluginCall> watchingCalls) {
+        if (callbackId != null) {
+            PluginCall removed = watchingCalls.remove(callbackId);
+            if (removed != null) {
+                removed.release(bridge);
+            }
+        }
+    }
+
+    private void processPeersList(WifiP2pDevice[] devices) {
+        JSObject jsDevices = deviceArrayToJSObject(devices);
+
+        if (watchingPeersDiscover != null) watchingPeersDiscover.success(jsDevices);
+
+        for (Map.Entry<String, PluginCall> watch : watchingPeersCalls.entrySet()) {
+            watch.getValue().success(jsDevices);
+        }
+    }
+
+    private void processConnectionInfo(WifiP2pInfo info) {
+        JSObject connectionInfo = new JSObject();
+
+        connectionInfo.put("groupFormed", info.groupFormed);
+        connectionInfo.put("isGroupOwner", info.isGroupOwner);
+
+        if (watchingConnectionInfo != null) watchingConnectionInfo.success(connectionInfo);
+
+        for (Map.Entry<String, PluginCall> watch : watchingCoInfoCalls.entrySet()) {
+            watch.getValue().success(connectionInfo);
+        }
+    }
+
+    private JSObject deviceArrayToJSObject(WifiP2pDevice[] devices) {
+        JSArray deviceArray = new JSArray();
+
+        for (WifiP2pDevice device : devices) {
+            JSObject obj = new JSObject();
+
+            obj.put("deviceAddress", device.deviceAddress);
+            obj.put("deviceName", device.deviceName);
+            obj.put("primaryDeviceType", device.primaryDeviceType);
+            obj.put("secondaryDeviceType", device.secondaryDeviceType);
+            obj.put("status", device.status);
+
+            deviceArray.put(obj);
+        }
+
+        JSObject ret = new JSObject();
+
+        ret.put("devices", deviceArray);
+
+        return ret;
+    }
+
+    void sendConnectionState(boolean isWifiEnabled) {
         JSObject state = new JSObject();
         state.put("isEnabled", isWifiEnabled);
-        notifyListeners(WIFI_STATE_EVENT, state);
+
+        for (Map.Entry<String, PluginCall> watch : watchingWifiStateCalls.entrySet()) {
+            watch.getValue().success(state);
+        }
     }
 
     @Override
