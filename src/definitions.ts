@@ -37,6 +37,7 @@ export interface WifiP2pInfo {
 export declare type DiscoveryPeersWatchCallback = (req: { devices: WifiP2pDevice[] }, err?: FailureReason) => void;
 export declare type WifiStateWatchCallback = (state: {isEnabled: boolean}) => void;
 export declare type ConnectionInfoWatchCallback = (info: WifiP2pInfo, err?: FailureReason) => void;
+export declare type MessageWatchCallback = (msg: {message: string}) => void;
 
 export interface WifiDirectPlugin {
   startDiscoveringPeers(callback: DiscoveryPeersWatchCallback): CallbackID;
@@ -44,9 +45,12 @@ export interface WifiDirectPlugin {
   connect(option: {device: WifiP2pDevice}, callback: ConnectionInfoWatchCallback): CallbackID;
   // disconnect(): Promise<void>;
   host(): Promise<void>;
+  write(msg: {message: string}): Promise<void>;
   startWatchConnectionInfo(callback: ConnectionInfoWatchCallback): CallbackID;
   startWatchWifiState(callback: WifiStateWatchCallback): CallbackID;
+  startReadingMessage(callback: MessageWatchCallback): CallbackID;
 
   clearInfoConnectionWatch(option: {id: CallbackID}): Promise<void>;
   clearWifiStateWatch(option: {id: CallbackID}): Promise<void>;
+  clearMessageWatch(option: {id: CallbackID}): Promise<void>;
 }
