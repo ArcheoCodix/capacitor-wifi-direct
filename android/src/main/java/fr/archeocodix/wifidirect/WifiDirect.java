@@ -55,6 +55,10 @@ public class WifiDirect extends Plugin {
 
     static final int MESSAGE_READ = 1;
 
+    Server server;
+    Client client;
+    SendReceive sendReceive;
+
     @Override
     public void load() {
         super.load();
@@ -75,10 +79,6 @@ public class WifiDirect extends Plugin {
         this.intentFilter.addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION);
         this.intentFilter.addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION);
     }
-
-    Server server;
-    Client client;
-    SendReceive sendReceive;
 
     Handler messageHandler = new Handler(new Callback() {
         @Override
@@ -226,7 +226,8 @@ public class WifiDirect extends Plugin {
     }
 
     @PluginMethod(returnType=PluginMethod.RETURN_CALLBACK)
-    private void startWatchMessage(PluginCall call) {
+    private void startReadingMessage(PluginCall call) {
+        call.save();
         watchingMessageCalls.put(call.getCallbackId(), call);
     }
 
